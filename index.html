@@ -120,148 +120,22 @@ const data=mode==="hiragana"?hiragana:katakana;
 const current=data[index];
 
 const speak=()=>{
-const utter=new SpeechSynthesisUtterance(current);
-utter.lang="ja-JP";
 speechSynthesis.cancel();
-speechSynthesis.speak(utter);
-};
 
-return(
-<div className="p-4 max-w-md mx-auto text-center">
-<h1 className="text-2xl font-bold mb-4">Kana Tracing Practice</h1>
+const utter1=new SpeechSynthesisUtterance(current);
+utter1.lang="ja-JP";
+utter1.rate=0.6;
+utter1.pitch=1.0;
 
-<div className="flex justify-center gap-2 mb-4">
-<button onClick={()=>setMode("hiragana")} className="px-3 py-2 rounded-2xl bg-black text-white">Hiragana</button>
-<button onClick={()=>setMode("katakana")} className="px-3 py-2 rounded-2xl bg-gray-200">Katakana</button>
-</div>
+const utter2=new SpeechSynthesisUtterance(current);
+utter2.lang="ja-JP";
+utter2.rate=0.6;
+utter2.pitch=1.0;
 
-<div className="text-6xl mb-2">{current}</div>
-
-<button onClick={speak} className="px-4 py-2 bg-purple-500 text-white rounded-2xl mb-2">🔊 Sound</button>
-
-<div className="mb-2">
-<button
-onClick={()=>setShowRomaji(!showRomaji)}
-className="px-3 py-1 bg-blue-500 text-white rounded-xl"
->Show Romaji</button>
-</div>
-
-{showRomaji && (
-<div className="text-xl text-gray-600 mb-2">
-{romajiMap[current] || romajiMap[current.toLowerCase()]}
-</div>
-)}
-
-<button
-onClick={()=>setIndex((index+1)%data.length)}
-className="px-4 py-2 bg-green-500 text-white rounded-2xl mb-4"
->Next</button>
-
-<DrawingCanvas kana={current}/>
-</div>
-);
-}
-
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(KanaApp));
-</script>
-</body>
-</html>
-
-useEffect(()=>{
-resetCanvas();
-},[kana]);
-
-const resetCanvas=()=>{
-const canvas=canvasRef.current;
-const ctx=canvas.getContext("2d");
-ctx.clearRect(0,0,300,300);
-
-// guide lines
-ctx.strokeStyle="#e5e7eb";
-ctx.lineWidth=1;
-ctx.beginPath();
-ctx.moveTo(0,150); ctx.lineTo(300,150);
-ctx.moveTo(150,0); ctx.lineTo(150,300);
-ctx.stroke();
-
-// tracing kana
-ctx.font="180px sans-serif";
-ctx.strokeStyle="#cbd5e1";
-ctx.lineWidth=3;
-ctx.setLineDash([8,6]);
-ctx.textAlign="center";
-ctx.textBaseline="middle";
-ctx.strokeText(kana,150,150);
-ctx.setLineDash([]);
-};
-
-const getPos=(e)=>{
-const rect=canvasRef.current.getBoundingClientRect();
-const x=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
-const y=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
-return {x,y};
-};
-
-const startDraw=(e)=>{
-setDrawing(true);
-};
-
-const endDraw=()=>{
-setDrawing(false);
-const ctx=canvasRef.current.getContext("2d");
-ctx.beginPath();
-};
-
-const draw=(e)=>{
-if(!drawing) return;
-const ctx=canvasRef.current.getContext("2d");
-const {x,y}=getPos(e);
-ctx.lineWidth=6;
-ctx.lineCap="round";
-ctx.strokeStyle="black";
-ctx.lineTo(x,y);
-ctx.stroke();
-ctx.beginPath();
-ctx.moveTo(x,y);
-};
-
-return(
-<div className="mt-4">
-<canvas
-ref={canvasRef}
-width={300}
-height={300}
-className="border rounded-2xl bg-white touch-none"
-onMouseDown={startDraw}
-onMouseUp={endDraw}
-onMouseMove={draw}
-onMouseLeave={endDraw}
-onTouchStart={startDraw}
-onTouchEnd={endDraw}
-onTouchMove={draw}
-/>
-
-<button
-onClick={resetCanvas}
-className="mt-2 px-3 py-1 bg-gray-300 rounded-xl"
->Clear</button>
-</div>
-);
-}
-
-function KanaApp(){
-const [mode,setMode]=useState("hiragana");
-const [index,setIndex]=useState(0);
-const [showRomaji,setShowRomaji]=useState(false);
-
-const data=mode==="hiragana"?hiragana:katakana;
-const current=data[index];
-
-const speak=()=>{
-const utter=new SpeechSynthesisUtterance(current);
-utter.lang="ja-JP";
-speechSynthesis.cancel();
-speechSynthesis.speak(utter);
+speechSynthesis.speak(utter1);
+setTimeout(()=>{
+  speechSynthesis.speak(utter2);
+},400);
 };
 
 return(
