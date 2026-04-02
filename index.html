@@ -10,31 +10,193 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body class="bg-gray-100">
-  <div id="root"></div>
+<div id="root"></div>
 
-  <script type="text/babel" data-presets="react">
-    const { useState, useRef, useEffect } = React;
+<script type="text/babel" data-presets="react">
+const { useState, useRef, useEffect } = React;
 
-    const hiragana = [
-      { kana: "あ", romaji: "a" }, { kana: "い", romaji: "i" }, { kana: "う", romaji: "u" }, { kana: "え", romaji: "e" }, { kana: "お", romaji: "o" },
-      { kana: "か", romaji: "ka" }, { kana: "き", romaji: "ki" }, { kana: "く", romaji: "ku" }, { kana: "け", romaji: "ke" }, { kana: "こ", romaji: "ko" }
-    ];
+const hiragana=["あ","い","う","え","お","か","き","く","け","こ","さ","し","す","せ","そ","た","ち","つ","て","と","な","に","ぬ","ね","の","は","ひ","ふ","へ","ほ","ま","み","む","め","も","や","ゆ","よ","ら","り","る","れ","ろ","わ","を","ん"];
+const katakana=["ア","イ","ウ","エ","オ","カ","キ","ク","ケ","コ","サ","シ","ス","セ","ソ","タ","チ","ツ","テ","ト","ナ","ニ","ヌ","ネ","ノ","ハ","ヒ","フ","ヘ","ホ","マ","ミ","ム","メ","モ","ヤ","ユ","ヨ","ラ","リ","ル","レ","ロ","ワ","ヲ","ン"];
 
-    const katakana = [
-      { kana: "ア", romaji: "a" }, { kana: "イ", romaji: "i" }, { kana: "ウ", romaji: "u" }, { kana: "エ", romaji: "e" }, { kana: "オ", romaji: "o" },
-      { kana: "カ", romaji: "ka" }, { kana: "キ", romaji: "ki" }, { kana: "ク", romaji: "ku" }, { kana: "ケ", romaji: "ke" }, { kana: "コ", romaji: "ko" }
-    ];
+function DrawingCanvas({ kana }) {
+  const canvasRef=useRef(null);
+  const templateRef=useRef(null);
+  const [drawing,setDrawing]=useState(false);
+  const [score,setScore]=useState(null);
+  const [attempts,setAttempts]=useState([]);
+  const [strokeCount,setStrokeCount]=useState(0);
 
-    function DrawingCanvas({ kana }) {
-      const canvasRef = useRef(null);
-      const [drawing, setDrawing] = useState(false);
+  useEffect(()=>{
+    drawGuide();
+    createTemplate();
+    setScore(null);
+    setAttempts([]);
+  },[kana]);
 
-      useEffect(() => {
-        drawGuide();
-      }, [kana]);
+  const drawGuide=()=>{
+    const canvas=canvasRef.current;
+    const ctx=canvas.getContext("2d");
+    ctx.clearRect(0,0,300,300);
 
-      const drawGuide = () => {
-        const canvas = canvasRef.current;
+    ctx.strokeStyle="#ddd";
+    ctx.beginPath();
+    ctx.moveTo(0,150); ctx.lineTo(300,150);
+    ctx.moveTo(150,0); ctx.lineTo(150,300);
+    ctx.stroke();
+
+    ctx.font="180px sans-serif";
+    ctx.fillStyle="rgba(0,0,0,0.05)";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.fillText(kana,150,150);
+  };
+
+  const createTemplate=()=>{
+    const off=document.createElement("canvas");
+    off.width=300; off.height=300;
+    const ctx=off.getContext("2d");
+    ctx.fillStyle="black";
+    ctx.font="180px sans-serif";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.fillText(kana,150,150);
+    templateRef.current=ctx.getImageData(0,0,300,300);
+  };
+
+  const getPos=(e)=>{
+    const rect=canvasRef.current.getBoundingClientRect();
+    const x=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+    const y=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
+    return {x,y};
+  };
+
+  const startDraw=(e)=>{e.preventDefault(); setDrawing(true); setStrokeCount(s=>s+1);};
+  const endDraw=(e)=>{e.preventDefault(); setDrawing(false); calculateScore();};
+
+  const draw=(e)=>{
+    if(!drawing) return;
+    const ctx=canvasRef.current.getContext("2d");
+    const {x,y}=getPos(e);
+    ctx.lineWidth=5;
+    ctx.lineCap="round";
+    ctx.strokeStyle="black";
+    ctx.lineTo(x,y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x,y);
+  };
+
+  const calculateScore=()=>{
+    const canvas=canvasRef.current;
+    const ctx=canvas.getContext("2d");
+    const user=ctx.getImageData(0,0,300,300);
+    const template=templateRef.current;
+
+    let match=0;
+    let total=0;
+
+    for(let i=0;i<user.data.length;i+=4){
+      const t=template.data[i];
+      if(t>0){
+        total++;
+        const r=user.data[i];
+        const g=user.data[i+1];
+        const b=user.data[i+2];
+        if(r<120 && g<120 && b<120) match++;
+      }
+    }
+
+    const shapeScore=Math.round((match/total)*100);
+    const strokeScore=Math.max(0,100-Math.abs(strokeCount-2)*20);
+    const finalScore=Math.round((shapeScore*0.8)+(strokeScore*0.2));
+
+    highlightMissed(user,template);
+
+    setScore(finalScore);
+    setAttempts(a=>{
+      const updated=[...a,finalScore];
+      return updated.slice(-5);
+    });
+  };
+
+  const highlightMissed=(user,template)=>{
+    const ctx=canvasRef.current.getContext("2d");
+    const overlay=ctx.createImageData(300,300);
+
+    for(let i=0;i<template.data.length;i+=4){
+      const t=template.data[i];
+      const r=user.data[i];
+      const g=user.data[i+1];
+      const b=user.data[i+2];
+
+      if(t>0 && !(r<120 && g<120 && b<120)){
+        overlay.data[i]=255;
+        overlay.data[i+3]=120;
+      }
+    }
+    ctx.putImageData(overlay,0,0);
+  };
+
+  const avg = attempts.length ? Math.round(attempts.reduce((a,b)=>a+b,0)/attempts.length) : null;
+
+  return (
+    <div className="mt-4">
+      <canvas
+        ref={canvasRef}
+        width={300}
+        height={300}
+        className="border rounded-2xl bg-white touch-none"
+        onMouseDown={startDraw}
+        onMouseUp={endDraw}
+        onMouseMove={draw}
+        onMouseLeave={endDraw}
+        onTouchStart={startDraw}
+        onTouchEnd={endDraw}
+        onTouchMove={draw}
+      />
+
+      {score!==null && (
+        <div className="mt-2">
+          <div className="text-lg font-semibold">Score: {score}%</div>
+          {avg!==null && <div className="text-sm text-gray-600">Average (last {attempts.length}): {avg}%</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KanaApp(){
+  const [mode,setMode]=useState("hiragana");
+  const [index,setIndex]=useState(0);
+
+  const data=mode==="hiragana"?hiragana:katakana;
+  const current=data[index];
+
+  return(
+    <div className="p-4 max-w-md mx-auto text-center">
+      <h1 className="text-2xl font-bold mb-4">Kana Writing Trainer</h1>
+
+      <div className="flex justify-center gap-2 mb-4">
+        <button onClick={()=>setMode("hiragana")} className="px-3 py-2 rounded-2xl bg-black text-white">Hiragana</button>
+        <button onClick={()=>setMode("katakana")} className="px-3 py-2 rounded-2xl bg-gray-200">Katakana</button>
+      </div>
+
+      <div className="text-6xl mb-4">{current}</div>
+
+      <button
+        onClick={()=>setIndex((index+1)%data.length)}
+        className="px-4 py-2 bg-green-500 text-white rounded-2xl mb-4"
+      >Next</button>
+
+      <DrawingCanvas kana={current} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(KanaApp));
+</script>
+</body>
+</html>        const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
